@@ -1,0 +1,39 @@
+data &fmt = byte[2] "%d\n"
+
+set @main() int {
+    push 10 // stack [10]
+    push 20 // stack [20, 10]
+    swap // stack [10, 20]
+    push &fmt // stack [fmt, 10, 20]
+    swap // stack [10, fmt, 20]
+    
+    call @printf(2) // 10
+
+    push 30 // stack [30, 20]
+    dup // stack [30, 30, 20]
+    push &fmt // stack [fmt, 30, 30, 20]
+    swap // stack [30, fmt, 30, 20]
+
+    call @printf(2) // 30
+
+    push &fmt // stack [fmt, 30, 20]
+    swap // stack [30, fmt, 20]
+
+    call @printf(2) // 30
+
+    push 40 // stack [40, 20]
+    over // stack [20, 40, 20]
+    push &fmt // stack [fmt, 20, 40, 20]
+    swap // stack [20, fmt, 40, 20]
+
+    call @printf(2) // 20
+
+    push &fmt // stack [fmt, 40, 20]
+    swap // stack [40, fmt, 20]
+
+    call @printf(2) // 40
+
+    pop // stack []
+    push 0 // stack [0]
+    ret int
+}

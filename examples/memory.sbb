@@ -1,0 +1,22 @@
+data &fmt = byte[2] "%s"
+data &list_bytes = byte[10] "\0"
+
+set @main() int {
+    push 65
+    push 66
+    swap
+    remt &list_bytes // list_bytes = "" pops the \0 and pushs to the stack
+    pop // pops the \0
+    popt &list_bytes // list_bytes = "A"
+    popt &list_bytes // list_bytes = "AB"
+    push 10
+    popt &list_bytes // list_bytes = "AB\n"
+    push 0
+    popt &list_bytes // list_bytes = "AB\n\0"
+    push &list_bytes
+    push &fmt
+    call @printf(2)
+
+    push 0
+    ret int
+}

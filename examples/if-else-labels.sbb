@@ -1,0 +1,25 @@
+data &fmt = byte[13] "34 + 35 = %d\n"
+data &fmt2 = byte[4] "Bye\n"
+
+set @main() int {
+    push 34
+    push 35
+    add
+    push 69
+    cmp equal // options: equal, notequal, greater, less, greater_equal, less_equal
+    jmp_t %ifblock
+    jmp %elseblock
+%ifblock:
+    push &fmt
+    push 34
+    push 35
+    add
+    call @printf(2)
+    jmp %end
+%elseblock:
+    push &fmt2
+    call @printf(1)
+%end:
+    push 0
+    ret int
+}

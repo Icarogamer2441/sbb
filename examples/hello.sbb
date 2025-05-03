@@ -1,0 +1,12 @@
+// this is a comment!
+data &fmt = byte[14] "Hello, world!\n"
+
+set @main() int {
+    push &fmt
+    call @printf(1)
+
+    push 0
+    ret int
+}
+
+// this language is a stack-based compiler back-end, made for programming languages that is stack-based and compiled

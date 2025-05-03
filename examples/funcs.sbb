@@ -1,0 +1,26 @@
+data &fmt = byte[13] "10 + 20 = %d\n"
+
+set @sum(int a, int b) int {
+    push a    // Loads from %rbp+16 (arg a)
+    push b    // Loads from %rbp+24 (arg b)
+    add       // Pops b, pops a, pushes a+b
+    ret int   // Pops result into %rax
+}
+
+set @main() int {
+    // Call @sum(10, 20)
+    push 20   // Push second argument first. Stack: [20]
+    push 10   // Push first argument last. Stack: [10, 20]
+    call @sum(2) // Calls sum, cleans stack, pushes result (30). Stack: [30]
+
+    // Call @printf(&fmt, result_of_sum=30)
+    // Target stack before call: [30, &fmt]
+    push &fmt      // Push fmt addr. Stack: [&fmt, 30]
+    swap           // Swap top two. Stack: [30, &fmt]
+    call @printf(2) // Pops 30 into %rsi, pops &fmt into %rdi.
+
+    push 0
+    ret int   // Pops 0 into %rax
+}
+
+// note: to remove the last element from the stack, you can use: pop

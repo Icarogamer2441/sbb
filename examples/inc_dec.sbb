@@ -1,0 +1,22 @@
+data &fmt = byte[2] "%d\n"
+
+set @main() int {
+    push 10
+    var $a
+    push $a
+    inc
+    var $a
+    push &fmt
+    push $a
+    call @printf(2)
+
+    push $a
+    dec
+    var $a
+    push &fmt
+    push $a
+    call @printf(2)
+
+    push 0
+    ret int
+}
