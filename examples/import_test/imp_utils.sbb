@@ -1,0 +1,7 @@
+data &int_fmt = byte[2] "%d\n"
+
+macro puti {
+    push &int_fmt
+    swap
+    call printf(2)
+}

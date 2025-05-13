@@ -1,0 +1,15 @@
+data &hello = byte[13] "Hello, World!"
+data &str_fmt = byte[3] "%s\n"
+
+macro puts {
+    push &str_fmt
+    swap
+    call @printf(2)
+}
+
+set @main() int {
+    push &hello
+    puts
+    push 0
+    ret int
+}

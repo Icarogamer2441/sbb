@@ -1,0 +1,8 @@
+import "./imp_utils.sbb"
+
+set @main() int {
+    push 10
+    puti
+    push 0
+    ret int
+}

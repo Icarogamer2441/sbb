@@ -1,8 +1,68 @@
 import argparse
 import sys
 import os
-from .parser_lexer import parse_sbb  # We'll uncomment these later
+from .parser_lexer import parse_sbb, expand_macros_in_ast, ImportDecl, Program, MacroDef, FuncDecl, DataDecl # Added ImportDecl and other AST nodes
 from .codegen import generate_assembly
+
+# --- Import Resolution ---
+def resolve_imports(current_ast, current_file_path, processed_files):
+    """
+    Resolves import statements in the AST.
+    - current_ast: The AST of the current file being processed.
+    - current_file_path: Absolute path to the current file.
+    - processed_files: A set of absolute file paths already processed to prevent circular imports.
+    Returns a new list of declarations with imports resolved and replaced.
+    """
+    if not isinstance(current_ast, Program):
+        return current_ast # Should not happen if called correctly
+
+    if current_file_path in processed_files:
+        # print(f"Note: Skipping already processed file (circular import detected or redundant import): {current_file_path}", file=sys.stderr)
+        # Return an empty list of declarations for a file that's already been processed in the current chain
+        # This effectively means its declarations are already accounted for higher up the import chain.
+        return []
+
+
+    processed_files.add(current_file_path)
+    # print(f"Processing imports for: {current_file_path}")
+
+    final_declarations = []
+    current_dir = os.path.dirname(current_file_path)
+
+    for decl in current_ast.declarations:
+        if isinstance(decl, ImportDecl):
+            imported_file_relative_path = decl.filepath
+            # Ensure the imported path is treated as relative to the current file's directory
+            imported_file_abs_path = os.path.abspath(os.path.join(current_dir, imported_file_relative_path))
+
+            if not os.path.exists(imported_file_abs_path):
+                raise FileNotFoundError(f"Error: Imported file '{imported_file_abs_path}' (from '{imported_file_relative_path}' in '{current_file_path}') not found.")
+
+            # print(f"  Importing: {imported_file_abs_path}")
+            try:
+                with open(imported_file_abs_path, 'r') as f:
+                    imported_source_code = f.read()
+            except IOError as e:
+                raise IOError(f"Error reading imported file '{imported_file_abs_path}': {e}")
+
+            imported_ast = parse_sbb(imported_source_code)
+            if not imported_ast:
+                raise SyntaxError(f"Parsing failed for imported file: {imported_file_abs_path}")
+
+            # Recursively resolve imports for the newly parsed AST
+            # Pass a copy of processed_files to handle different import branches correctly,
+            # or manage it carefully if passed by reference. For simplicity, a copy is safer here
+            # to avoid a file being marked as processed globally when it's only processed in one branch.
+            # However, for strict circular dependency detection, the original set should be used.
+            # Let's use the original set to correctly detect circular dependencies.
+            imported_declarations = resolve_imports(imported_ast, imported_file_abs_path, processed_files)
+            final_declarations.extend(imported_declarations)
+        else:
+            # Keep non-import declarations (FuncDecl, DataDecl, MacroDef)
+            final_declarations.append(decl)
+    
+    return final_declarations
+
 
 def main():
     parser = argparse.ArgumentParser(description='Compile sbb language file to GAS x86_64 assembly or executable.',
@@ -43,6 +103,43 @@ def main():
         sys.exit(1)
     # print("Parsing... (Not implemented yet)")
     # ast = None # Placeholder
+
+    # Resolve imports
+    print("Resolving imports...")
+    try:
+        # Get absolute path of the main input file for correct relative import resolution
+        abs_input_file_path = os.path.abspath(input_file)
+        processed_files_set = set()
+        # Resolve imports. This returns a new list of all declarations.
+        all_declarations = resolve_imports(ast, abs_input_file_path, processed_files_set)
+        # Update the AST's declarations. The original AST object (Program) is preserved.
+        ast.declarations = all_declarations
+        print("Import resolution complete.")
+    except (FileNotFoundError, SyntaxError, IOError, ValueError) as e: # Catch specific errors
+        print(f"Error during import resolution: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e: # Catch any other unexpected errors
+        print(f"An unexpected error occurred during import resolution: {e}", file=sys.stderr)
+        # import traceback
+        # traceback.print_exc(file=sys.stderr) # For more detailed debugging if needed
+        sys.exit(1)
+
+
+    # Expand macros (after imports are resolved and all declarations are collected)
+    print("Expanding macros...")
+    try:
+        defined_macros_map = {} # This map will be populated by expand_macros_in_ast
+        # expand_macros_in_ast modifies the ast in-place
+        ast = expand_macros_in_ast(ast, defined_macros_map)
+        print("Macro expansion complete.")
+    except ValueError as e: # Catch specific errors from expansion
+        print(f"Error during macro expansion: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e: # Catch any other unexpected errors
+        print(f"An unexpected error occurred during macro expansion: {e}", file=sys.stderr)
+        # import traceback
+        # traceback.print_exc(file=sys.stderr) # For more detailed debugging if needed
+        sys.exit(1)
 
     # 2. Apply Optimizations (Conditionally)
     if not args.no_opt:
